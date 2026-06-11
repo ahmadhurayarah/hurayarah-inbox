@@ -7,7 +7,6 @@ import { ArrowLeftIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import MailboxSplitView from "~/components/MailboxSplitView";
-import { documentTitle } from "~/lib/pwa-brand";
 import { formatListDate, getSnippetText } from "~/lib/utils";
 import { useUpdateEmail } from "~/queries/emails";
 import { useSearchEmails, SEARCH_PAGE_SIZE } from "~/queries/search";
@@ -28,10 +27,6 @@ function highlightTerms(text: string, query: string): React.ReactNode {
 		const lowerEscaped = escaped.toLowerCase();
 		return parts.map((part, i) => part.toLowerCase() === lowerEscaped ? <mark key={i} className="bg-kumo-warning-muted text-kumo-default rounded-sm px-0.5">{part}</mark> : part);
 	} catch { return text; }
-}
-
-export function meta() {
-	return [{ title: documentTitle("Search") }];
 }
 
 export default function SearchResultsRoute() {

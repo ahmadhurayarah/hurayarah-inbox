@@ -23,12 +23,6 @@ import {
 	useMailboxes,
 } from "~/queries/mailboxes";
 import { queryKeys } from "~/queries/keys";
-import InstallAppButton from "~/components/InstallAppButton";
-import { SITE_TITLE } from "~/lib/pwa-brand";
-
-export function meta() {
-	return [{ title: SITE_TITLE }];
-}
 
 export default function HomeRoute() {
 	const toastManager = useKumoToastManager();
@@ -148,7 +142,6 @@ export default function HomeRoute() {
 					<div className="flex items-center justify-between">
 						<h1 className="text-2xl font-bold text-kumo-default">Mailboxes</h1>
 						<div className="flex items-center gap-2">
-							<InstallAppButton />
 							{!isConfigured && (
 								<Button
 									variant="primary"

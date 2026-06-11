@@ -48,9 +48,7 @@ app.use("*", async (c, next) => {
 	const pathname = new URL(c.req.url).pathname;
 	if (
 		pathname === "/manifest.webmanifest" ||
-		pathname === "/sw.js" ||
 		pathname === "/favicon.svg" ||
-		pathname === "/favicon.ico" ||
 		pathname.startsWith("/icons/")
 	) {
 		return next();
@@ -90,6 +88,24 @@ app.use("*", async (c, next) => {
 	// Authorization model note: once a teammate passes the shared Cloudflare
 	// Access policy, they can access all mailboxes in this app by design.
 	return next();
+});
+
+// Serve manifest with the MIME type Chrome expects for installability checks.
+app.get("/manifest.webmanifest", async (c) => {
+	const assetRequest = new Request(new URL("/manifest.webmanifest", c.req.url), {
+		method: "GET",
+	});
+	const assetResponse = await requestHandler(assetRequest, {
+		cloudflare: { env: c.env, ctx: c.executionCtx as ExecutionContext },
+	});
+	if (!assetResponse.ok) {
+		return assetResponse;
+	}
+	const body = await assetResponse.text();
+	return c.body(body, 200, {
+		"Content-Type": "application/manifest+json; charset=utf-8",
+		"Cache-Control": "public, max-age=86400",
+	});
 });
 
 // MCP server endpoint — used by AI coding tools (ProtoAgent, Claude Code, Cursor, etc.)
