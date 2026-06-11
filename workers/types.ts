@@ -5,4 +5,6 @@
 export interface Env extends Cloudflare.Env {
 	POLICY_AUD: string;
 	TEAM_DOMAIN: string;
+	DISCORD_WEBHOOK_URL?: string;
+	DISCORD_NOTIFY_MAILBOXES?: string;
 }
