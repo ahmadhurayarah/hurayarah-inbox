@@ -23,18 +23,13 @@ import {
 	ScrollRestoration,
 } from "react-router";
 import { ApiError } from "~/services/api";
-import {
-	PWA_APP_DESCRIPTION,
-	PWA_APP_NAME,
-	PWA_THEME_COLOR,
-	SITE_TITLE,
-} from "~/lib/pwa-brand";
+import { SITE_DESCRIPTION, SITE_TITLE } from "~/lib/site-meta";
 import "./index.css";
 
 export function meta() {
 	return [
 		{ title: SITE_TITLE },
-		{ name: "description", content: PWA_APP_DESCRIPTION },
+		{ name: "description", content: SITE_DESCRIPTION },
 	];
 }
 
@@ -94,21 +89,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 			<head>
 				<meta charSet="UTF-8" />
 				<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-				<link rel="manifest" href="/manifest.webmanifest" />
-				<link rel="apple-touch-icon" href="/icons/icon-192.png" />
 				<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-				<meta name="description" content={PWA_APP_DESCRIPTION} />
-				<meta name="theme-color" content={PWA_THEME_COLOR} />
-				<meta name="mobile-web-app-capable" content="yes" />
-				<meta name="apple-mobile-web-app-capable" content="yes" />
-				<meta name="apple-mobile-web-app-title" content={PWA_APP_NAME} />
-				<meta
-					name="apple-mobile-web-app-status-bar-style"
-					content="default"
-				/>
-				<meta name="application-name" content={PWA_APP_NAME} />
-				<meta name="msapplication-TileColor" content={PWA_THEME_COLOR} />
-				<meta name="msapplication-TileImage" content="/icons/icon-192.png" />
 				<Meta />
 				<Links />
 			</head>

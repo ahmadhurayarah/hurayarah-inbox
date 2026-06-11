@@ -44,16 +44,6 @@ const app = new Hono<{ Bindings: Env }>();
 
 // Cloudflare Access JWT validation middleware (production only)
 app.use("*", async (c, next) => {
-	// PWA assets must stay reachable for installability checks (manifest, SW, icons).
-	const pathname = new URL(c.req.url).pathname;
-	if (
-		pathname === "/manifest.webmanifest" ||
-		pathname === "/favicon.svg" ||
-		pathname.startsWith("/icons/")
-	) {
-		return next();
-	}
-
 	// Skip validation in development
 	if (import.meta.env.DEV) {
 		return next();
@@ -88,24 +78,6 @@ app.use("*", async (c, next) => {
 	// Authorization model note: once a teammate passes the shared Cloudflare
 	// Access policy, they can access all mailboxes in this app by design.
 	return next();
-});
-
-// Serve manifest with the MIME type Chrome expects for installability checks.
-app.get("/manifest.webmanifest", async (c) => {
-	const assetRequest = new Request(new URL("/manifest.webmanifest", c.req.url), {
-		method: "GET",
-	});
-	const assetResponse = await requestHandler(assetRequest, {
-		cloudflare: { env: c.env, ctx: c.executionCtx as ExecutionContext },
-	});
-	if (!assetResponse.ok) {
-		return assetResponse;
-	}
-	const body = await assetResponse.text();
-	return c.body(body, 200, {
-		"Content-Type": "application/manifest+json; charset=utf-8",
-		"Cache-Control": "public, max-age=86400",
-	});
 });
 
 // MCP server endpoint — used by AI coding tools (ProtoAgent, Claude Code, Cursor, etc.)
