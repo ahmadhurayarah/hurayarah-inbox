@@ -23,6 +23,11 @@ import {
 	ScrollRestoration,
 } from "react-router";
 import { ApiError } from "~/services/api";
+import {
+	PWA_APP_NAME,
+	PWA_APP_SHORT_NAME,
+	PWA_THEME_COLOR,
+} from "~/lib/pwa-brand";
 import "./index.css";
 
 function makeQueryClient() {
@@ -87,8 +92,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
 					href="/favicon.ico"
 					sizes="48x48 32x32 16x16"
 				/>
+				<link rel="manifest" href="/manifest.webmanifest" />
+				<link rel="apple-touch-icon" href="/icons/icon-192.png" />
 				<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-				<title>Agentic Inbox</title>
+				<meta name="theme-color" content={PWA_THEME_COLOR} />
+				<meta name="mobile-web-app-capable" content="yes" />
+				<meta name="apple-mobile-web-app-capable" content="yes" />
+				<meta name="apple-mobile-web-app-title" content={PWA_APP_SHORT_NAME} />
+				<meta
+					name="apple-mobile-web-app-status-bar-style"
+					content="default"
+				/>
+				<meta name="application-name" content={PWA_APP_SHORT_NAME} />
+				<meta name="msapplication-TileColor" content={PWA_THEME_COLOR} />
+				<meta name="msapplication-TileImage" content="/icons/icon-192.png" />
+				<title>{PWA_APP_NAME}</title>
 				<Meta />
 				<Links />
 			</head>
