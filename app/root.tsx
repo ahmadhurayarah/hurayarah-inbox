@@ -12,7 +12,7 @@ import {
 } from "@cloudflare/kumo";
 import { WarningIcon } from "@phosphor-icons/react";
 import { MutationCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { forwardRef, useState } from "react";
+import { forwardRef, useEffect, useState } from "react";
 import {
 	isRouteErrorResponse,
 	Links,
@@ -24,11 +24,19 @@ import {
 } from "react-router";
 import { ApiError } from "~/services/api";
 import {
+	PWA_APP_DESCRIPTION,
 	PWA_APP_NAME,
-	PWA_APP_SHORT_NAME,
 	PWA_THEME_COLOR,
+	SITE_TITLE,
 } from "~/lib/pwa-brand";
 import "./index.css";
+
+export function meta() {
+	return [
+		{ title: SITE_TITLE },
+		{ name: "description", content: PWA_APP_DESCRIPTION },
+	];
+}
 
 function makeQueryClient() {
 	return new QueryClient({
@@ -86,27 +94,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
 			<head>
 				<meta charSet="UTF-8" />
 				<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-				<link
-					rel="icon"
-					type="image/x-icon"
-					href="/favicon.ico"
-					sizes="48x48 32x32 16x16"
-				/>
 				<link rel="manifest" href="/manifest.webmanifest" />
 				<link rel="apple-touch-icon" href="/icons/icon-192.png" />
 				<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+				<meta name="description" content={PWA_APP_DESCRIPTION} />
 				<meta name="theme-color" content={PWA_THEME_COLOR} />
 				<meta name="mobile-web-app-capable" content="yes" />
 				<meta name="apple-mobile-web-app-capable" content="yes" />
-				<meta name="apple-mobile-web-app-title" content={PWA_APP_SHORT_NAME} />
+				<meta name="apple-mobile-web-app-title" content={PWA_APP_NAME} />
 				<meta
 					name="apple-mobile-web-app-status-bar-style"
 					content="default"
 				/>
-				<meta name="application-name" content={PWA_APP_SHORT_NAME} />
+				<meta name="application-name" content={PWA_APP_NAME} />
 				<meta name="msapplication-TileColor" content={PWA_THEME_COLOR} />
 				<meta name="msapplication-TileImage" content="/icons/icon-192.png" />
-				<title>{PWA_APP_NAME}</title>
 				<Meta />
 				<Links />
 			</head>
@@ -131,6 +133,14 @@ export default function App() {
 	// Use useState to ensure each SSR request gets a fresh client while the
 	// browser reuses the same singleton across navigations.
 	const [queryClient] = useState(getQueryClient);
+
+	useEffect(() => {
+		if (!("serviceWorker" in navigator)) return;
+		navigator.serviceWorker.register("/sw.js").catch(() => {
+			// Non-fatal — install may still work via manifest on some browsers.
+		});
+	}, []);
+
 	return (
 		<QueryClientProvider client={queryClient}>
 			<LinkProvider component={KumoLink}>

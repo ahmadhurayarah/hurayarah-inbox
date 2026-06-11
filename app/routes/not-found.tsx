@@ -5,6 +5,11 @@
 import { Button, Empty } from "@cloudflare/kumo";
 import { WarningIcon } from "@phosphor-icons/react";
 import { useNavigate } from "react-router";
+import { documentTitle } from "~/lib/pwa-brand";
+
+export function meta() {
+	return [{ title: documentTitle("Page not found") }];
+}
 
 export default function NotFoundRoute() {
 	const navigate = useNavigate();

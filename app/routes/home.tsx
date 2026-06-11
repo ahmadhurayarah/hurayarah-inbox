@@ -23,9 +23,11 @@ import {
 	useMailboxes,
 } from "~/queries/mailboxes";
 import { queryKeys } from "~/queries/keys";
+import InstallAppButton from "~/components/InstallAppButton";
+import { SITE_TITLE } from "~/lib/pwa-brand";
 
 export function meta() {
-	return [{ title: "Agentic Inbox" }];
+	return [{ title: SITE_TITLE }];
 }
 
 export default function HomeRoute() {
@@ -145,15 +147,18 @@ export default function HomeRoute() {
 				<div className="mb-8">
 					<div className="flex items-center justify-between">
 						<h1 className="text-2xl font-bold text-kumo-default">Mailboxes</h1>
-						{!isConfigured && (
-							<Button
-								variant="primary"
-								icon={<PlusIcon size={16} />}
-								onClick={() => setIsCreateOpen(true)}
-							>
-								New Mailbox
-							</Button>
-						)}
+						<div className="flex items-center gap-2">
+							<InstallAppButton />
+							{!isConfigured && (
+								<Button
+									variant="primary"
+									icon={<PlusIcon size={16} />}
+									onClick={() => setIsCreateOpen(true)}
+								>
+									New Mailbox
+								</Button>
+							)}
+						</div>
 					</div>
 					{domains.length > 0 && (
 						<p className="text-sm text-kumo-subtle mt-1">

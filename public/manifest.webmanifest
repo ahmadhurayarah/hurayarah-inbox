@@ -1,9 +1,9 @@
 {
   "id": "hurayarah-inbox",
-  "name": "Agentic Inbox",
+  "name": "Hurayarah Inbox",
   "short_name": "Inbox",
   "lang": "en-US",
-  "description": "AI-powered email for hurayarah.dev — read, draft, and manage mailboxes.",
+  "description": "Hurayarah Inbox — AI-powered email for hurayarah.dev.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

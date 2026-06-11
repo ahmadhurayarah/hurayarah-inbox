@@ -44,6 +44,18 @@ const app = new Hono<{ Bindings: Env }>();
 
 // Cloudflare Access JWT validation middleware (production only)
 app.use("*", async (c, next) => {
+	// PWA assets must stay reachable for installability checks (manifest, SW, icons).
+	const pathname = new URL(c.req.url).pathname;
+	if (
+		pathname === "/manifest.webmanifest" ||
+		pathname === "/sw.js" ||
+		pathname === "/favicon.svg" ||
+		pathname === "/favicon.ico" ||
+		pathname.startsWith("/icons/")
+	) {
+		return next();
+	}
+
 	// Skip validation in development
 	if (import.meta.env.DEV) {
 		return next();

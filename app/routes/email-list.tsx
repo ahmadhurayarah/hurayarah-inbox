@@ -19,9 +19,10 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router";
-import { Folders } from "shared/folders";
+import { Folders, getFolderDisplayName } from "shared/folders";
 import { formatListDate } from "shared/dates";
 import MailboxSplitView from "~/components/MailboxSplitView";
+import { documentTitle } from "~/lib/pwa-brand";
 import { getSnippetText } from "~/lib/utils";
 import {
 	useDeleteEmail,
@@ -138,6 +139,15 @@ function FolderEmptyState({
 			)}
 		</div>
 	);
+}
+
+export function meta({
+	params,
+}: {
+	params: { folder?: string };
+}) {
+	const folder = params.folder ?? Folders.INBOX;
+	return [{ title: documentTitle(getFolderDisplayName(folder)) }];
 }
 
 export default function EmailListRoute() {
