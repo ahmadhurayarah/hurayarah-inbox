@@ -181,6 +181,7 @@ export function useComposeForm(mailboxId?: string, _folder?: string) {
 	const [error, setError] = useState<string | null>(null);
 	const [isSavingDraft, setIsSavingDraft] = useState(false);
 	const [isSending, setIsSending] = useState(false);
+	const [attachments, setAttachments] = useState<File[]>([]);
 	const lastInitializedOptionsRef = useRef<typeof composeOptions | null>(null);
 	const isDraftEdit = !!composeOptions.draftEmail;
 
@@ -207,11 +208,36 @@ export function useComposeForm(mailboxId?: string, _folder?: string) {
 		setShowCcBcc(initialFields.showCcBcc);
 		setSubject(initialFields.subject);
 		setBody(initialFields.body);
+		setAttachments([]);
 	}, [composeOptions, currentMailbox?.email, sigBlock]);
+
+	const fileToBase64 = (file: File): Promise<string> => {
+		return new Promise((resolve, reject) => {
+			const reader = new FileReader();
+			reader.readAsDataURL(file);
+			reader.onload = () => resolve((reader.result as string).split(',')[1]);
+			reader.onerror = error => reject(error);
+		});
+	};
+
+	const processAttachments = async (files: File[]) => {
+		return Promise.all(
+			files.map(async (file) => {
+				const base64 = await fileToBase64(file);
+				return {
+					content: base64,
+					filename: file.name,
+					type: file.type || "application/octet-stream",
+					disposition: "attachment" as const,
+				};
+			})
+		);
+	};
 
 	const handleSaveDraft = async () => {
 		if (!mailboxId || isSending) return; setIsSavingDraft(true); setError(null);
 		try {
+			const processedAttachments = attachments.length > 0 ? await processAttachments(attachments) : undefined;
 			await saveDraftMutation.mutateAsync({ mailboxId, draft: {
 				to,
 				cc: cc || undefined,
@@ -221,6 +247,7 @@ export function useComposeForm(mailboxId?: string, _folder?: string) {
 				in_reply_to: composeOptions.originalEmail?.id || composeOptions.draftEmail?.in_reply_to || undefined,
 				thread_id: composeOptions.originalEmail?.thread_id || composeOptions.draftEmail?.thread_id || undefined,
 				draft_id: composeOptions.draftEmail?.id || undefined,
+				attachments: processedAttachments,
 			} });
 			toastManager.add({ title: "Draft saved!" });
 		}
@@ -240,18 +267,21 @@ export function useComposeForm(mailboxId?: string, _folder?: string) {
 		const ccRecipients = splitEmailList(cc); const bccRecipients = splitEmailList(bcc);
 		const fromName = currentMailbox.settings?.fromName || currentMailbox.name;
 		const from = fromName && fromName !== currentMailbox.email ? { email: currentMailbox.email, name: fromName } : currentMailbox.email;
-		const emailData = {
-			to: toEmailListValue(toRecipients),
-			cc: toEmailListValue(ccRecipients),
-			bcc: toEmailListValue(bccRecipients),
-			from,
-			subject,
-			html: body,
-			text: htmlToPlainText(body),
-		};
-		const draftId = composeOptions.draftEmail?.id; const mode = composeOptions.mode; const originalId = composeOptions.originalEmail?.id || composeOptions.draftEmail?.in_reply_to;
+		
 		setIsSending(true); toastManager.add({ title: "Sending email..." });
 		try {
+			const processedAttachments = attachments.length > 0 ? await processAttachments(attachments) : undefined;
+			const emailData = {
+				to: toEmailListValue(toRecipients),
+				cc: toEmailListValue(ccRecipients),
+				bcc: toEmailListValue(bccRecipients),
+				from,
+				subject,
+				html: body,
+				text: htmlToPlainText(body),
+				attachments: processedAttachments,
+			};
+			const draftId = composeOptions.draftEmail?.id; const mode = composeOptions.mode; const originalId = composeOptions.originalEmail?.id || composeOptions.draftEmail?.in_reply_to;
 			if ((mode === "reply" || mode === "reply-all") && originalId) await replyMutation.mutateAsync({ mailboxId, emailId: originalId, email: emailData });
 			else if (mode === "forward" && originalId) await forwardMutation.mutateAsync({ mailboxId, emailId: originalId, email: emailData });
 			else await sendEmailMutation.mutateAsync({ mailboxId, email: emailData });
@@ -262,5 +292,5 @@ export function useComposeForm(mailboxId?: string, _folder?: string) {
 		finally { setIsSending(false); }
 	};
 
-	return { to, setTo, cc, setCc, bcc, setBcc, showCcBcc, setShowCcBcc, subject, setSubject, body, setBody, error, setError, isSavingDraft, isSending, formTitle, handleSaveDraft, handleSend, closeCompose, closePanel };
+	return { to, setTo, cc, setCc, bcc, setBcc, showCcBcc, setShowCcBcc, subject, setSubject, body, setBody, attachments, setAttachments, error, setError, isSavingDraft, isSending, formTitle, handleSaveDraft, handleSend, closeCompose, closePanel };
 }
