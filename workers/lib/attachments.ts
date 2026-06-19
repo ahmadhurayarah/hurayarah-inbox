@@ -7,6 +7,7 @@
  * Eliminates the triplicated atob → Uint8Array → R2.put pattern.
  */
 import type { Env } from "../types";
+import { Buffer } from "node:buffer";
 
 export interface StoredAttachment {
 	id: string;
@@ -40,8 +41,7 @@ export async function storeAttachments(
 		// Sanitize filename to prevent path traversal in R2 keys
 		const safeFilename = (att.filename || "untitled").replace(/[\/\\:*?"<>|\x00-\x1f]/g, "_");
 		const key = `attachments/${emailId}/${attachmentId}/${safeFilename}`;
-		const binaryStr = atob(att.content);
-		const bytes = Uint8Array.from(binaryStr, (c) => c.charCodeAt(0));
+		const bytes = Buffer.from(att.content, "base64");
 		await bucket.put(key, bytes);
 		results.push({
 			id: attachmentId,
