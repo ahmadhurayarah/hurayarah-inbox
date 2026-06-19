@@ -212,7 +212,7 @@ app.post("/api/v1/mailboxes/:mailboxId/emails", async (c: AppContext) => {
 	c.executionCtx.waitUntil(
 		sendEmail(c.env.EMAIL, {
 			to, cc, bcc, from, subject, html, text,
-			attachments: attachments?.map((att) => ({ content: att.content, filename: att.filename, type: att.type, disposition: att.disposition || "attachment", contentId: att.contentId })),
+			attachments: attachments?.map((att) => ({ content: Uint8Array.from(atob(att.content), c => c.charCodeAt(0)).buffer, filename: att.filename, type: att.type, disposition: att.disposition || "attachment", contentId: att.contentId })),
 			...(in_reply_to ? { headers: buildThreadingHeaders(in_reply_to, references || []) } : {}),
 		}).catch((e) => console.error("Deferred email delivery failed:", (e as Error).message)),
 	);

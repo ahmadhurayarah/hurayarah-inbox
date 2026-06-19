@@ -20,7 +20,7 @@ export interface SendEmailParams {
 	bcc?: string | string[];
 	replyTo?: string | { email: string; name: string };
 	attachments?: {
-		content: string; // base64 encoded
+		content: string | ArrayBuffer; // base64 encoded string or raw ArrayBuffer
 		filename: string;
 		type: string;
 		disposition: "attachment" | "inline";

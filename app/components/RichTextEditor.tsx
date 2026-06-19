@@ -31,11 +31,13 @@ import { useCallback, useEffect } from "react";
 interface RichTextEditorProps {
 	value: string;
 	onChange: (value: string) => void;
+	toolbarExtra?: React.ReactNode;
 }
 
 export default function RichTextEditor({
 	value,
 	onChange,
+	toolbarExtra,
 }: RichTextEditorProps) {
 	const editor = useEditor({
 		extensions: [
@@ -228,6 +230,13 @@ export default function RichTextEditor({
 						aria-label="Redo"
 					/>
 				</Tooltip>
+
+				{toolbarExtra && (
+					<>
+						<div className="mx-1 h-5 w-px bg-kumo-fill" />
+						{toolbarExtra}
+					</>
+				)}
 			</div>
 
 			{/* Editor content */}

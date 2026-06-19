@@ -171,6 +171,28 @@ export default function ComposePanel() {
 						<RichTextEditor
 							value={body}
 							onChange={setBody}
+							toolbarExtra={
+								<div className="flex items-center">
+									<input
+										type="file"
+										multiple
+										ref={fileInputRef}
+										onChange={handleFileChange}
+										className="hidden"
+									/>
+									<Button
+										type="button"
+										variant="ghost"
+										shape="square"
+										size="sm"
+										icon={<PaperclipIcon size={16} />}
+										onClick={() => fileInputRef.current?.click()}
+										disabled={isSending}
+										title="Attach File"
+										aria-label="Attach File"
+									/>
+								</div>
+							}
 						/>
 					</div>
 				</div>
@@ -182,22 +204,6 @@ export default function ComposePanel() {
 							Discard
 						</Button>
 						<div className="flex items-center gap-2">
-							<input
-								type="file"
-								multiple
-								ref={fileInputRef}
-								onChange={handleFileChange}
-								className="hidden"
-							/>
-							<Button
-								type="button"
-								variant="ghost"
-								size="sm"
-								icon={<PaperclipIcon size={16} />}
-								onClick={() => fileInputRef.current?.click()}
-								disabled={isSending}
-								title="Attach File"
-							/>
 							<Button
 								type="button"
 								variant="secondary"
