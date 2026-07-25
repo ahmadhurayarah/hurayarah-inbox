@@ -5,9 +5,60 @@
 import { Banner, Button, Input } from "@cloudflare/kumo";
 import { FloppyDiskIcon, PaperPlaneTiltIcon, XIcon, PaperclipIcon } from "@phosphor-icons/react";
 import { useParams } from "react-router";
-import { useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useComposeForm } from "~/hooks/useComposeForm";
 import RichTextEditor from "./RichTextEditor";
+
+function AttachmentThumbnail({
+	file,
+	onRemove,
+}: {
+	file: File;
+	onRemove: () => void;
+}) {
+	const isImage = file.type.startsWith("image/");
+	const previewUrl = useMemo(
+		() => (isImage ? URL.createObjectURL(file) : null),
+		[file, isImage],
+	);
+
+	useEffect(() => {
+		return () => {
+			if (previewUrl) URL.revokeObjectURL(previewUrl);
+		};
+	}, [previewUrl]);
+
+	if (isImage && previewUrl) {
+		return (
+			<div className="relative w-16 h-16 shrink-0 rounded-md overflow-hidden border border-kumo-line">
+				<img
+					src={previewUrl}
+					alt={file.name}
+					title={file.name}
+					className="w-full h-full object-cover"
+				/>
+				<button
+					type="button"
+					onClick={onRemove}
+					aria-label={`Remove ${file.name}`}
+					className="absolute top-0.5 right-0.5 flex items-center justify-center w-4 h-4 rounded-full bg-black/60 text-white hover:bg-black/80"
+				>
+					<XIcon size={10} weight="bold" />
+				</button>
+			</div>
+		);
+	}
+
+	return (
+		<div className="flex items-center gap-2 bg-kumo-base border border-kumo-line rounded px-2 py-1 text-sm">
+			<span className="truncate max-w-[200px]" title={file.name}>{file.name}</span>
+			<span className="text-kumo-subtle text-xs">({(file.size / 1024).toFixed(1)} KB)</span>
+			<button type="button" onClick={onRemove} className="text-kumo-subtle hover:text-kumo-danger">
+				<XIcon size={14} />
+			</button>
+		</div>
+	);
+}
 
 export default function ComposePanel() {
 	const { mailboxId, folder } = useParams<{
@@ -158,13 +209,11 @@ export default function ComposePanel() {
 						{attachments.length > 0 && (
 							<div className="p-3 border-b border-kumo-line bg-kumo-fill/10 flex flex-wrap gap-2">
 								{attachments.map((file, idx) => (
-									<div key={idx} className="flex items-center gap-2 bg-kumo-base border border-kumo-line rounded px-2 py-1 text-sm">
-										<span className="truncate max-w-[200px]" title={file.name}>{file.name}</span>
-										<span className="text-kumo-subtle text-xs">({(file.size / 1024).toFixed(1)} KB)</span>
-										<button type="button" onClick={() => removeAttachment(idx)} className="text-kumo-subtle hover:text-kumo-danger">
-											<XIcon size={14} />
-										</button>
-									</div>
+									<AttachmentThumbnail
+										key={idx}
+										file={file}
+										onRemove={() => removeAttachment(idx)}
+									/>
 								))}
 							</div>
 						)}
