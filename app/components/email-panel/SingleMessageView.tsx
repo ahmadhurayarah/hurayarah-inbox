@@ -30,7 +30,11 @@ export default function SingleMessageView({
 							<div className="text-sm font-medium text-kumo-default truncate">
 								{email.sender}
 							</div>
-							<div className="text-xs text-kumo-subtle">To: {email.recipient}</div>
+							<div className="space-y-0.5 text-xs text-kumo-subtle break-words">
+								<div>To: {email.recipient}</div>
+								{email.cc?.trim() && <div>Cc: {email.cc}</div>}
+								{email.bcc?.trim() && <div>Bcc: {email.bcc}</div>}
+							</div>
 						</div>
 					</div>
 					<span className="text-xs text-kumo-subtle shrink-0">

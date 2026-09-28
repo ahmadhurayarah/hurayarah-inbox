@@ -216,6 +216,14 @@ export function useDeleteEmail() {
 	});
 }
 
+export function useEmptyTrash() {
+	const invalidate = useInvalidateEmailData();
+	return useMutation({
+		mutationFn: ({ mailboxId }: { mailboxId: string }) => api.emptyTrash(mailboxId),
+		onSuccess: (_data, { mailboxId }) => invalidate(mailboxId),
+	});
+}
+
 export function useMoveEmail() {
 	const invalidate = useInvalidateEmailData();
 	return useMutation({

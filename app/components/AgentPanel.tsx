@@ -23,6 +23,7 @@ import { useParams } from "react-router";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useUIStore } from "~/hooks/useUIStore";
+import ConfirmDialog from "~/components/ConfirmDialog";
 import type { UIMessage } from "ai";
 
 const TOOL_LABELS: Record<string, { label: string; icon: React.ReactNode }> = {
@@ -305,6 +306,7 @@ function AgentChatConnected({
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const [inputValue, setInputValue] = useState("");
+	const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
 	const { startCompose } = useUIStore();
 
 	const agent = useAgent({ agent: "EmailAgent", name: mailboxId });
@@ -361,11 +363,7 @@ function AgentChatConnected({
 								shape="square"
 								size="sm"
 								icon={<TrashIcon size={14} />}
-								onClick={() => {
-									if (window.confirm("Clear chat history?")) {
-										setMessages([]);
-									}
-								}}
+								onClick={() => setIsClearDialogOpen(true)}
 								aria-label="Clear chat"
 							/>
 						</Tooltip>
@@ -517,6 +515,17 @@ function AgentChatConnected({
 					</div>
 				)}
 			</div>
+			<ConfirmDialog
+				open={isClearDialogOpen}
+				onOpenChange={setIsClearDialogOpen}
+				title="Clear Chat History"
+				description="This will remove all messages from the current chat."
+				confirmLabel="Clear Chat"
+				onConfirm={() => {
+					setMessages([]);
+					setIsClearDialogOpen(false);
+				}}
+			/>
 		</div>
 	);
 }

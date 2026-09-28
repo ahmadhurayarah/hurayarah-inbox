@@ -11,6 +11,18 @@ interface EmailIframeProps {
 	autoSize?: boolean;
 }
 
+function openExternalLinksInNewTab(html: string): string {
+	const parsed = new DOMParser().parseFromString(html, "text/html");
+	for (const anchor of parsed.querySelectorAll<HTMLAnchorElement>("a[href]")) {
+		const href = anchor.getAttribute("href")?.trim().toLowerCase() ?? "";
+		if (href.startsWith("http://") || href.startsWith("https://") || href.startsWith("//") || href.startsWith("mailto:")) {
+			anchor.target = "_blank";
+			anchor.rel = "noopener noreferrer";
+		}
+	}
+	return parsed.body.innerHTML;
+}
+
 /**
  * Renders email HTML inside a sandboxed iframe.
  *
@@ -59,12 +71,12 @@ export default function EmailIframe({ body, autoSize }: EmailIframeProps) {
 		const iframe = iframeRef.current;
 		if (!iframe || !body) return;
 
-		const cleanBody = DOMPurify.sanitize(body, {
+		const cleanBody = openExternalLinksInNewTab(DOMPurify.sanitize(body, {
 			USE_PROFILES: { html: true },
 			FORBID_TAGS: ["style"],
 			ADD_ATTR: ["target"],
 			FORCE_BODY: true,
-		});
+		}));
 
 		const padding = autoSize ? "0" : "24px";
 
@@ -144,7 +156,7 @@ ul, ol { padding-left: 20px; margin: 4px 0; }
 			ref={iframeRef}
 			className="block w-full border-0"
 			style={autoSize ? { height: `${height}px` } : { height: "100%" }}
-			sandbox="allow-scripts allow-popups allow-top-navigation-by-user-activation"
+			sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
 			title="Email content"
 		/>
 	);

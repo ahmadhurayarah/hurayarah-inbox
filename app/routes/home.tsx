@@ -4,6 +4,7 @@
 
 import {
 	Button,
+	Badge,
 	Dialog,
 	Empty,
 	Input,
@@ -14,8 +15,10 @@ import {
 } from "@cloudflare/kumo";
 import { EnvelopeIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Link as RouterLink } from "react-router";
+import { Folders } from "shared/folders";
 import api from "~/services/api";
 import {
 	useCreateMailbox,
@@ -23,6 +26,7 @@ import {
 	useMailboxes,
 } from "~/queries/mailboxes";
 import { queryKeys } from "~/queries/keys";
+import type { Folder } from "~/types";
 
 export default function HomeRoute() {
 	const toastManager = useKumoToastManager();
@@ -85,6 +89,32 @@ export default function HomeRoute() {
 		return () => { cancelled = true; };
 	}, [emailAddresses, mailboxes, refetchMailboxes]);
 
+	const isConfigured = emailAddresses.length > 0;
+	const accounts = isConfigured
+		? emailAddresses.map((addr) => ({
+				id: addr,
+				email: addr,
+				name: addr.split("@")[0] || addr,
+			}))
+		: mailboxes;
+	const isLoading = !configData;
+	const knownMailboxIds = new Set(mailboxes.map((mailbox) => mailbox.id.toLowerCase()));
+	const folderQueries = useQueries({
+		queries: accounts.map((account) => ({
+			queryKey: queryKeys.folders.list(account.id),
+			queryFn: () => api.listFolders(account.id),
+			enabled: !isLoading && (!isConfigured || knownMailboxIds.has(account.id.toLowerCase())),
+			staleTime: 10_000,
+			refetchInterval: 30_000,
+		})),
+	});
+
+	const getUnreadCount = (accountId: string) => {
+		const accountIndex = accounts.findIndex((account) => account.id === accountId);
+		const folders = folderQueries[accountIndex]?.data as Folder[] | undefined;
+		return folders?.find((folder) => folder.id === Folders.INBOX)?.unreadCount ?? 0;
+	};
+
 	const handleCreate = async (e: FormEvent) => {
 		e.preventDefault();
 		setCreateError(null);
@@ -123,17 +153,6 @@ export default function HomeRoute() {
 			setIsDeleting(false);
 		}
 	};
-
-	const isConfigured = emailAddresses.length > 0;
-	const accounts = isConfigured
-		? emailAddresses.map((addr) => ({
-				id: addr,
-				email: addr,
-				name: addr.split("@")[0] || addr,
-			}))
-		: mailboxes;
-
-	const isLoading = !configData;
 
 	return (
 		<div className="min-h-screen bg-kumo-recessed">
@@ -185,6 +204,11 @@ export default function HomeRoute() {
 										{account.email}
 									</div>
 								</div>
+								{getUnreadCount(account.id) > 0 && (
+									<Badge variant="secondary">
+										{getUnreadCount(account.id)}
+									</Badge>
+								)}
 								{!isConfigured && (
 									<Button
 										variant="ghost"

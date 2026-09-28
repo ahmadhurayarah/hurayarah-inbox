@@ -2,10 +2,11 @@
 // Licensed under the Apache 2.0 license found in the LICENSE file or at:
 //     https://opensource.org/licenses/Apache-2.0
 
-import { Button, Pagination, Tooltip } from "@cloudflare/kumo";
+import { Button, Pagination, Tooltip, useKumoToastManager } from "@cloudflare/kumo";
 import {
 	ArchiveIcon,
 	ArrowBendUpLeftIcon,
+	ArrowCounterClockwiseIcon,
 	ArrowsClockwiseIcon,
 	EnvelopeOpenIcon,
 	EnvelopeSimpleIcon,
@@ -21,12 +22,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router";
 import { Folders } from "shared/folders";
 import { formatListDate } from "shared/dates";
+import ConfirmDialog from "~/components/ConfirmDialog";
 import MailboxSplitView from "~/components/MailboxSplitView";
 import { getSnippetText } from "~/lib/utils";
 import {
 	useDeleteEmail,
 	useEmails,
+	useEmptyTrash,
 	useMarkThreadRead,
+	useMoveEmail,
 	useUpdateEmail,
 } from "~/queries/emails";
 import { useFolders } from "~/queries/folders";
@@ -35,6 +39,13 @@ import { useUIStore } from "~/hooks/useUIStore";
 import type { Email } from "~/types";
 
 const PAGE_SIZE = 25;
+
+type ConfirmationRequest = {
+	title: string;
+	description: string;
+	confirmLabel: string;
+	onConfirm: () => void | Promise<void>;
+};
 
 const FOLDER_EMPTY_STATES: Record<
 	string,
@@ -152,12 +163,16 @@ export default function EmailListRoute() {
 		closePanel,
 		startCompose,
 	} = useUIStore();
+	const toastManager = useKumoToastManager();
 	const [page, setPage] = useState(1);
 
 	const queryClient = useQueryClient();
 	const updateEmail = useUpdateEmail();
 	const markThreadRead = useMarkThreadRead();
 	const deleteEmail = useDeleteEmail();
+	const emptyTrash = useEmptyTrash();
+	const moveEmail = useMoveEmail();
+	const [confirmation, setConfirmation] = useState<ConfirmationRequest | null>(null);
 
 	const params = useMemo(
 		() => ({
@@ -195,6 +210,7 @@ export default function EmailListRoute() {
 
 		if (folderChanged) {
 			closePanel();
+			setConfirmation(null);
 			setPage(1);
 		}
 	}, [mailboxId, folder, closePanel]);
@@ -213,11 +229,80 @@ export default function EmailListRoute() {
 	const handleDelete = (e: React.MouseEvent, emailId: string) => {
 		e.preventDefault();
 		e.stopPropagation();
-		if (mailboxId) {
-			const confirmed = window.confirm("Are you sure you want to delete this email?");
-			if (!confirmed) return;
-			deleteEmail.mutate({ mailboxId, id: emailId });
+		if (!mailboxId) return;
+		const permanentlyDelete = folder === Folders.TRASH || folder === Folders.DRAFT;
+		const originalFolder = folder || Folders.INBOX;
+		setConfirmation({
+			title: permanentlyDelete
+				? folder === Folders.DRAFT ? "Discard Draft" : "Permanently Delete Email"
+				: "Move Email to Trash",
+			description: permanentlyDelete
+				? folder === Folders.DRAFT
+					? "This draft will be permanently discarded. This action cannot be undone."
+					: "This email will be permanently deleted. This action cannot be undone."
+				: "This email will be moved to Trash, where you can restore it or delete it permanently.",
+			confirmLabel: permanentlyDelete ? "Delete" : "Move to Trash",
+			onConfirm: async () => {
+				try {
+					if (permanentlyDelete) {
+						await deleteEmail.mutateAsync({ mailboxId, id: emailId });
+					} else {
+						await moveEmail.mutateAsync({ mailboxId, id: emailId, folderId: Folders.TRASH });
+						let toastId = "";
+						toastId = toastManager.add({
+							title: "Moved to Trash",
+							actions: [{
+								children: "Undo",
+								onClick: async () => {
+									try {
+										await moveEmail.mutateAsync({ mailboxId, id: emailId, folderId: originalFolder });
+										toastManager.close(toastId);
+									} catch {
+										toastManager.add({ title: "Failed to restore email", variant: "error" });
+									}
+								},
+							}],
+						});
+					}
+					if (selectedEmailId === emailId) closePanel();
+					setConfirmation(null);
+				} catch {
+					toastManager.add({ title: permanentlyDelete ? "Failed to delete email" : "Failed to move email to Trash", variant: "error" });
+				}
+			},
+		});
+	};
+
+	const handleEmptyTrash = () => {
+		if (!mailboxId || folder !== Folders.TRASH || totalCount === 0) return;
+		setConfirmation({
+			title: "Empty Trash",
+			description: "All emails in Trash will be permanently deleted. This action cannot be undone.",
+			confirmLabel: "Empty Trash",
+			onConfirm: async () => {
+				try {
+					await emptyTrash.mutateAsync({ mailboxId });
+					closePanel();
+					setPage(1);
+					toastManager.add({ title: "Trash emptied" });
+					setConfirmation(null);
+				} catch {
+					toastManager.add({ title: "Failed to empty Trash", variant: "error" });
+				}
+			},
+		});
+	};
+
+	const handleRestore = async (e: React.MouseEvent, emailId: string) => {
+		e.preventDefault();
+		e.stopPropagation();
+		if (!mailboxId) return;
+		try {
+			await moveEmail.mutateAsync({ mailboxId, id: emailId, folderId: Folders.INBOX });
 			if (selectedEmailId === emailId) closePanel();
+			toastManager.add({ title: "Email restored to Inbox" });
+		} catch {
+			toastManager.add({ title: "Failed to restore email", variant: "error" });
 		}
 	};
 
@@ -269,6 +354,7 @@ export default function EmailListRoute() {
 	};
 
 	return (
+		<>
 		<MailboxSplitView
 			selectedEmailId={selectedEmailId}
 			isComposing={isComposing}
@@ -283,6 +369,16 @@ export default function EmailListRoute() {
 							<span className="text-sm text-kumo-subtle mr-2 hidden sm:inline">
 								{totalCount} conversation{totalCount !== 1 ? "s" : ""}
 							</span>
+						)}
+						{folder === Folders.TRASH && totalCount > 0 && (
+							<Button
+								variant="secondary-destructive"
+								size="sm"
+								icon={<TrashIcon size={15} />}
+								onClick={handleEmptyTrash}
+							>
+								Empty Trash
+							</Button>
 						)}
 						<Tooltip
 							content={isRefreshing ? "Refreshing..." : "Refresh"}
@@ -402,9 +498,21 @@ export default function EmailListRoute() {
 										</div>
 									</div>
 
-										{/* Hover actions */}
-										<div className="hidden group-hover:flex items-center shrink-0">
-											<Tooltip content={email.read ? "Mark unread" : "Mark read"} asChild>
+						{/* Hover actions */}
+						<div className="hidden group-hover:flex items-center shrink-0">
+							{folder === Folders.TRASH && (
+								<Tooltip content="Restore to Inbox" asChild>
+									<Button
+										variant="ghost"
+										shape="square"
+										size="sm"
+										icon={<ArrowCounterClockwiseIcon size={14} />}
+										onClick={(e) => handleRestore(e, email.id)}
+										aria-label="Restore to Inbox"
+									/>
+								</Tooltip>
+							)}
+							<Tooltip content={email.read ? "Mark unread" : "Mark read"} asChild>
 												<Button
 													variant="ghost"
 													shape="square"
@@ -457,5 +565,14 @@ export default function EmailListRoute() {
 					</div>
 				)}
 		</MailboxSplitView>
+		<ConfirmDialog
+			open={confirmation !== null}
+			onOpenChange={(open) => { if (!open) setConfirmation(null); }}
+			title={confirmation?.title ?? "Confirm action"}
+			description={confirmation?.description ?? ""}
+			confirmLabel={confirmation?.confirmLabel}
+			onConfirm={confirmation?.onConfirm ?? (() => {})}
+		/>
+		</>
 	);
 }

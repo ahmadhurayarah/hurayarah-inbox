@@ -1,9 +1,5 @@
 import type { Env } from "../types";
 
-/** TODO: move to DISCORD_WEBHOOK_URL secret — hardcoded for now. */
-const DISCORD_WEBHOOK_URL =
-	"https://discord.com/api/webhooks/1514765765306486866/u4T0DNYWgQ2zgyqq_samUD6qA9m_6ks3AUZdMxuHBWjmHyEyDa_N8UdXPrjz6SKVYp89";
-
 export type DiscordNewEmailPayload = {
 	mailboxId: string;
 	sender: string;
@@ -29,7 +25,11 @@ export async function notifyDiscordNewEmail(
 	env: Env,
 	payload: DiscordNewEmailPayload,
 ): Promise<void> {
-	const webhookUrl = env.DISCORD_WEBHOOK_URL?.trim() || DISCORD_WEBHOOK_URL;
+	const webhookUrl = env.DISCORD_WEBHOOK_URL?.trim();
+	if (!webhookUrl) {
+		console.warn("[discord] no webhook configured; skipping notification");
+		return;
+	}
 
 	const allowlist = parseMailboxAllowlist(env.DISCORD_NOTIFY_MAILBOXES);
 	if (allowlist && !allowlist.has(payload.mailboxId.toLowerCase())) {

@@ -251,6 +251,18 @@ app.put("/api/v1/mailboxes/:mailboxId/emails/:id", async (c: AppContext) => {
 	return email ? c.json(email) : c.json({ error: "Email not found" }, 404);
 });
 
+app.delete("/api/v1/mailboxes/:mailboxId/emails/trash", async (c: AppContext) => {
+	const attachments = await c.var.mailboxStub.deleteEmailsInFolder(Folders.TRASH);
+	if (attachments.length > 0) {
+		await c.env.BUCKET.delete(
+			attachments.map((att: { emailId: string; id: string; filename: string }) =>
+				`attachments/${att.emailId}/${att.id}/${att.filename}`,
+			),
+		);
+	}
+	return c.body(null, 204);
+});
+
 app.delete("/api/v1/mailboxes/:mailboxId/emails/:id", async (c: AppContext) => {
 	const id = c.req.param("id")!;
 	const attachments = await c.var.mailboxStub.deleteEmail(id);

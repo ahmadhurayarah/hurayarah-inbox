@@ -6,6 +6,7 @@ import { useKumoToastManager } from "@cloudflare/kumo";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router";
 import { Folders } from "shared/folders";
+import ConfirmDialog from "~/components/ConfirmDialog";
 import EmailPanelDialogs from "~/components/email-panel/EmailPanelDialogs";
 import EmailPanelHeader from "~/components/email-panel/EmailPanelHeader";
 import EmailPanelToolbar from "~/components/email-panel/EmailPanelToolbar";
@@ -18,6 +19,13 @@ import { useFolders } from "~/queries/folders";
 import { useMailbox } from "~/queries/mailboxes";
 import { useUIStore } from "~/hooks/useUIStore";
 import type { Email, Folder, Mailbox } from "~/types";
+
+type ConfirmationRequest = {
+	title: string;
+	description: string;
+	confirmLabel: string;
+	onConfirm: () => void | Promise<void>;
+};
 
 function EmailPanelSkeleton() {
 	return (
@@ -46,6 +54,7 @@ export default function EmailPanel({ emailId }: { emailId: string }) {
 	};
 	const { closePanel, startCompose } = useUIStore();
 	const toastManager = useKumoToastManager();
+	const [confirmation, setConfirmation] = useState<ConfirmationRequest | null>(null);
 	const [isSending, setIsSending] = useState(false);
 	const [sourceViewEmail, setSourceViewEmail] = useState<Email | null>(null);
 	const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set());
@@ -88,8 +97,65 @@ export default function EmailPanel({ emailId }: { emailId: string }) {
 	if (!email) return <EmailPanelSkeleton />;
 
 	const toggleStar = () => { if (mailboxId) updateEmail.mutate({ mailboxId, id: email.id, data: { starred: !email.starred } }); };
-	const handleMove = (folderId: string) => { if (mailboxId) { moveEmailMut.mutate({ mailboxId, id: email.id, folderId }); closePanel(); } };
-	const handleDelete = () => { if (mailboxId) { if (!window.confirm("Are you sure you want to delete this email?")) return; deleteEmailMut.mutate({ mailboxId, id: email.id }); closePanel(); } };
+	const showUndoToast = (emailId: string, originalFolder: string, currentMailboxId: string) => {
+		let toastId = "";
+		toastId = toastManager.add({
+			title: "Moved to Trash",
+			actions: [{
+				children: "Undo",
+				onClick: async () => {
+					try {
+						await moveEmailMut.mutateAsync({ mailboxId: currentMailboxId, id: emailId, folderId: originalFolder });
+						toastManager.close(toastId);
+					} catch {
+						toastManager.add({ title: "Failed to restore email", variant: "error" });
+					}
+				},
+			}],
+		});
+	};
+	const handleMove = async (folderId: string) => {
+		if (!mailboxId) return;
+		const originalFolder = folder || email.folder_id || Folders.INBOX;
+		try {
+			await moveEmailMut.mutateAsync({ mailboxId, id: email.id, folderId });
+			closePanel();
+			if (folderId === Folders.TRASH && originalFolder !== Folders.TRASH) showUndoToast(email.id, originalFolder, mailboxId);
+		} catch {
+			toastManager.add({ title: "Failed to move email", variant: "error" });
+		}
+	};
+	const handleDelete = () => {
+		if (!mailboxId) return;
+		const permanentlyDelete = folder === Folders.TRASH || folder === Folders.DRAFT;
+		const originalFolder = folder || email.folder_id || Folders.INBOX;
+		setConfirmation({
+			title: permanentlyDelete
+				? folder === Folders.DRAFT ? "Discard Draft" : "Permanently Delete Email"
+				: "Move Email to Trash",
+			description: permanentlyDelete
+				? folder === Folders.DRAFT
+					? "This draft will be permanently discarded. This action cannot be undone."
+					: "This email will be permanently deleted. This action cannot be undone."
+				: "This email will be moved to Trash, where you can restore it or delete it permanently.",
+			confirmLabel: permanentlyDelete ? "Delete" : "Move to Trash",
+			onConfirm: async () => {
+				try {
+					if (permanentlyDelete) {
+						await deleteEmailMut.mutateAsync({ mailboxId, id: email.id });
+						closePanel();
+					} else {
+						await moveEmailMut.mutateAsync({ mailboxId, id: email.id, folderId: Folders.TRASH });
+						closePanel();
+						showUndoToast(email.id, originalFolder, mailboxId);
+					}
+					setConfirmation(null);
+				} catch {
+					toastManager.add({ title: permanentlyDelete ? "Failed to delete email" : "Failed to move email to Trash", variant: "error" });
+				}
+			},
+		});
+	};
 
 	const handleEditDraft = (draftMsg?: Email) => {
 		const target = draftMsg || email;
@@ -100,10 +166,21 @@ export default function EmailPanel({ emailId }: { emailId: string }) {
 	const handleDeleteDraft = async (draftMsg?: Email) => {
 		const target = draftMsg || email;
 		if (!mailboxId) return;
-		if (!window.confirm("Discard this draft?")) return;
-		deleteEmailMut.mutate({ mailboxId, id: target.id });
-		toastManager.add({ title: "Draft discarded" });
-		if (target.id === emailId) closePanel();
+		setConfirmation({
+			title: "Discard Draft",
+			description: "This draft will be permanently discarded. This action cannot be undone.",
+			confirmLabel: "Discard",
+			onConfirm: async () => {
+				try {
+					await deleteEmailMut.mutateAsync({ mailboxId, id: target.id });
+					toastManager.add({ title: "Draft discarded" });
+					setConfirmation(null);
+					if (target.id === emailId) closePanel();
+				} catch {
+					toastManager.add({ title: "Failed to discard draft", variant: "error" });
+				}
+			},
+		});
 	};
 
 	const handleSendDraft = async (draftMsg?: Email) => {
@@ -222,6 +299,14 @@ export default function EmailPanel({ emailId }: { emailId: string }) {
 				previewImage={previewImage}
 				onCloseSource={() => setSourceViewEmail(null)}
 				onClosePreview={() => setPreviewImage(null)}
+			/>
+			<ConfirmDialog
+				open={confirmation !== null}
+				onOpenChange={(open) => { if (!open) setConfirmation(null); }}
+				title={confirmation?.title ?? "Confirm action"}
+				description={confirmation?.description ?? ""}
+				confirmLabel={confirmation?.confirmLabel}
+				onConfirm={confirmation?.onConfirm ?? (() => {})}
 			/>
 		</div>
 	);

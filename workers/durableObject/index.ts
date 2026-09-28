@@ -560,6 +560,25 @@ export class MailboxDO extends DurableObject<Env> {
 		return emailAttachments;
 	}
 
+	async deleteEmailsInFolder(folderId: string) {
+		const attachments = [
+			...this.ctx.storage.sql.exec(
+				`SELECT attachments.email_id as emailId, attachments.id, attachments.filename
+				 FROM attachments
+				 INNER JOIN emails ON emails.id = attachments.email_id
+				 WHERE emails.folder_id = ?1`,
+				folderId,
+			),
+		] as Array<{ emailId: string; id: string; filename: string }>;
+
+		this.ctx.storage.sql.exec(
+			`DELETE FROM attachments WHERE email_id IN (SELECT id FROM emails WHERE folder_id = ?1)`,
+			folderId,
+		);
+		this.ctx.storage.sql.exec(`DELETE FROM emails WHERE folder_id = ?1`, folderId);
+		return attachments;
+	}
+
 	async getAttachment(id: string) {
 		return (
 			this.db
