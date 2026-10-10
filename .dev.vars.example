@@ -2,8 +2,12 @@
 POLICY_AUD=your-access-policy-audience-tag
 TEAM_DOMAIN=https://your-team.cloudflareaccess.com
 
-# Discord — minimal alert on new inbound email (optional)
-# Create: Discord channel → Edit Channel → Integrations → Webhooks → New Webhook → Copy URL
-# DISCORD_WEBHOOK_URL=
-# Optional: only notify for these mailboxes (comma-separated). Leave empty for all.
+# Discord - minimal alert on new inbound email (optional)
+# Create a webhook in the Discord channel integrations settings and copy its URL.
+# DISCORD_GLOBAL_MAILBOXES=
+# Optional: limit global notifications to these mailboxes (comma-separated). Leave empty for all.
 # DISCORD_NOTIFY_MAILBOXES=hello@hurayarah.dev
+# Global fallback is enabled by default; set false to disable it.
+# DISCORD_GLOBAL_ENABLED=true
+# Optional mailbox-specific webhook routes (JSON). These remain active if global notifications are disabled.
+# DISCORD_ROLES_MAILBOXES=
